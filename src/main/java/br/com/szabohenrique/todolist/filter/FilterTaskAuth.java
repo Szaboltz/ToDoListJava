@@ -24,36 +24,47 @@ public class FilterTaskAuth extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
-                // pegar autenticação (usuário e senha)
-                var authorization = request.getHeader("Authorization");
 
-                // Mascarar as credenciais do usuário
-                var authEncoded = authorization.substring("Basic".length()).trim();
+                var serveletPath = request.getServletPath();
 
-                // Passar credenciais para um array de bytes
-                byte[] authDecode = Base64.getDecoder().decode(authEncoded);
+                if (serveletPath.equals("/tasks/")) {
 
-                // Uma string que decodifica as credenciais em usuário e senha 
-                var authString = new String(authDecode);
-                String[] credentials = authString.split(":");
-                String username = credentials[0];
-                String password = credentials[1];
+                    // pegar autenticação (usuário e senha)
+                    var authorization = request.getHeader("Authorization");
 
-                // Validar Usuário 
-                var user = this.userRepository.findByusername(username);
+                    // Mascarar as credenciais do usuário
+                    var authEncoded = authorization.substring("Basic".length()).trim();
 
-                if (user == null) {
-                    response.sendError(401);
-                } else {
-                    // Validar a senha do usuário 
-                    var passwordVerify = BCrypt.verifyer().verify(password.toCharArray(), user.getPassword());
-                    if (passwordVerify.verified == true) {
-                        // Segue viagem
-                         filterChain.doFilter(request, response);
-                    } else {
+                    // Passar credenciais para um array de bytes
+                    byte[] authDecode = Base64.getDecoder().decode(authEncoded);
+
+                    // Uma string que decodifica as credenciais em usuário e senha 
+                    var authString = new String(authDecode);
+                    String[] credentials = authString.split(":");
+                    String username = credentials[0];
+                    String password = credentials[1];
+
+                    // Validar Usuário 
+                    var user = this.userRepository.findByusername(username);
+
+                    if (user == null) {
                         response.sendError(401);
+                    } else {
+                        // Validar a senha do usuário 
+                        var passwordVerify = BCrypt.verifyer().verify(password.toCharArray(), user.getPassword());
+                        if (passwordVerify.verified == true) {
+                            request.setAttribute("idUser", user.getId());
+                            filterChain.doFilter(request, response);
+                        } else {
+                            response.sendError(401);
+                        }
                     }
+
+                } else {
+                    filterChain.doFilter(request, response);
                 }
+
+                
 
     }
 
